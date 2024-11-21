@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    image: captioning:latest
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./chromedriver-linux64:/app/chromedriver-linux64
+      - ./recaptioning:/app/recaptioning
+      - ./results.csv:/app/results.csv
+      - ./image_list.txt:/app/image_list.txt

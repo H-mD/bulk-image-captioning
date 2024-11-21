@@ -99,8 +99,25 @@ try:
             text_to_be_present_in_last_element(response_locator, processing_texts)
         )
 
-        response = driver.find_elements(*response_locator)
-        last_response = response[-1].text
+        response = driver.find_elements(*response_locator)[-1]
+        last_response = response.text
+
+        while "Timeout" in last_response:
+            print("timeout-detected")
+            div = driver.find_element(By.CSS_SELECTOR, "div[class='flex gap-2 flex-wrap justify-end items-end']")
+            regen_button = div.find_elements(By.CSS_SELECTOR, "button")[2]
+            regen_button.click()
+
+            WebDriverWait(driver, 300).until(
+                text_to_be_present_in_last_element(response_locator, processing_texts)
+            )
+            WebDriverWait(driver, 300).until(
+                text_to_be_present_in_last_element(response_locator, processing_texts)
+            )
+
+            response = driver.find_elements(*response_locator)[-1]
+            last_response = response.text
+        
         results.append({"image": image, "description": last_response})
 
 finally:
