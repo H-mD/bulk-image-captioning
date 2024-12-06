@@ -24,7 +24,7 @@ with open(image_list, "r") as file:
 
 results = []
 
-prompt = "Lakukan image captioning dalam satu kalimat"
+prompt = "Lakukan image captioning dalam satu kalimat dengan gaya bahasa yang berbeda dari sebelumnya"
 
 chrome_options = Options()
 chrome_options.add_argument("--headless")
@@ -54,6 +54,7 @@ def number_of_elements_to_be(locator, count):
     return _predicate
 
 try:
+    error_count = 0
     driver.get(aibelajarlagi_url)
 
     # Login
@@ -65,65 +66,106 @@ try:
     button_login.click()
 
     for i, image in enumerate(images):
-        WebDriverWait(driver, 30).until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "textarea"))
-        )
+        while True:  # Keep trying until no exception occurs
+            try:
+                start = time.time()
 
-        time.sleep(5)
+                WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "textarea"))
+                )
 
-        div = driver.find_element(By.CSS_SELECTOR, "div[class='flex gap-2 flex-wrap justify-end items-end']")
-        button_image = div.find_elements(By.CSS_SELECTOR, "button")[1]
-        button_image.click()
+                time.sleep(5)
 
-        path = image_dir + "\\" + image
-        file_input = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
-        file_input.send_keys(path)
+                div = driver.find_element(By.CSS_SELECTOR, "div[class='flex gap-2 flex-wrap justify-end items-end']")
+                button_image = div.find_elements(By.CSS_SELECTOR, "button")[1]
+                button_image.click()
 
-        time.sleep(5)
+                path = image_dir + "\\" + image
+                file_input = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
+                file_input.send_keys(path)
 
-        text_input = driver.find_element(By.CSS_SELECTOR, "textarea")
-        text_input.send_keys(prompt)
+                time.sleep(5)
 
-        button_submit = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
-        button_submit.click()
+                WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "textarea"))
+                )
 
-        processing_texts = ["Generating...", "Thinking..."]
-        response_locator = (By.CSS_SELECTOR, "div[class*='group/message'][class*='bg-muted']")
-        WebDriverWait(driver, 300).until(
-            number_of_elements_to_be(response_locator, i+1)
-        )
-        WebDriverWait(driver, 300).until(
-            text_to_be_present_in_last_element(response_locator, processing_texts)
-        )
-        WebDriverWait(driver, 300).until_not(
-            text_to_be_present_in_last_element(response_locator, processing_texts)
-        )
+                text_input = driver.find_element(By.CSS_SELECTOR, "textarea")
+                text_input.send_keys(prompt)
 
-        response = driver.find_elements(*response_locator)[-1]
-        last_response = response.text
+                button_submit = driver.find_element(By.CSS_SELECTOR, "button[type='submit']")
+                button_submit.click()
 
-        while "Timeout" in last_response:
-            print("timeout-detected")
-            div = driver.find_element(By.CSS_SELECTOR, "div[class='flex gap-2 flex-wrap justify-end items-end']")
-            regen_button = div.find_elements(By.CSS_SELECTOR, "button")[2]
-            regen_button.click()
+                processing_texts = ["Generating...", "Thinking..."]
+                response_locator = (By.CSS_SELECTOR, "div[class*='group/message'][class*='bg-muted']")
+                WebDriverWait(driver, 300).until(
+                    number_of_elements_to_be(response_locator, i+1)
+                )
+                WebDriverWait(driver, 300).until(
+                    text_to_be_present_in_last_element(response_locator, processing_texts)
+                )
+                WebDriverWait(driver, 300).until_not(
+                    text_to_be_present_in_last_element(response_locator, processing_texts)
+                )
 
-            WebDriverWait(driver, 300).until(
-                text_to_be_present_in_last_element(response_locator, processing_texts)
-            )
-            WebDriverWait(driver, 300).until(
-                text_to_be_present_in_last_element(response_locator, processing_texts)
-            )
+                response = driver.find_elements(*response_locator)[-1]
+                last_response = response.text
 
-            response = driver.find_elements(*response_locator)[-1]
-            last_response = response.text
-        
-        results.append({"image": image, "description": last_response})
+                while "Timeout" in last_response:
+                    print("timeout-detected")
+                    div = driver.find_element(By.CSS_SELECTOR, "div[class='flex gap-2 flex-wrap justify-end items-end']")
+                    regen_button = div.find_elements(By.CSS_SELECTOR, "button")[2]
+                    regen_button.click()
 
+                    WebDriverWait(driver, 300).until(
+                        text_to_be_present_in_last_element(response_locator, processing_texts)
+                    )
+                    WebDriverWait(driver, 300).until_not(
+                        text_to_be_present_in_last_element(response_locator, processing_texts)
+                    )
+
+                    response = driver.find_elements(*response_locator)[-1]
+                    last_response = response.text
+                
+                while "error" in last_response:
+                    print("timeout-detected")
+                    div = driver.find_element(By.CSS_SELECTOR, "div[class='flex gap-2 flex-wrap justify-end items-end']")
+                    regen_button = div.find_elements(By.CSS_SELECTOR, "button")[2]
+                    regen_button.click()
+
+                    WebDriverWait(driver, 300).until(
+                        text_to_be_present_in_last_element(response_locator, processing_texts)
+                    )
+                    WebDriverWait(driver, 300).until_not(
+                        text_to_be_present_in_last_element(response_locator, processing_texts)
+                    )
+
+                    response = driver.find_elements(*response_locator)[-1]
+                    last_response = response.text
+
+                with open(output_file, "a") as file:
+                    file.write(f'{image},{last_response}\n')
+
+                end = time.time()
+                period = end - start
+                print(f'{image} - {period:0,.2f}s')
+                break
+            except Exception as e:
+                print(f'{e}\n{image} - error, retrying...')
+                error_count += 1
+                if error_count > 10:
+                    print('too many errors, restarting driver...')
+                    driver.quit()
+                    driver = webdriver.Chrome(service=service, options=chrome_options)
+                    driver.get(aibelajarlagi_url)
+                    
+                    # Login
+                    email_input = driver.find_element(By.CSS_SELECTOR, "input[type='email']")
+                    email_input.send_keys(aibelajarlagi_email)
+                    password_input = driver.find_element(By.CSS_SELECTOR, "input[type='password']")
+                    password_input.send_keys(aibelajarlagi_password)
+                    button_login = driver.find_element(By.CSS_SELECTOR, "button")
+                    button_login.click()
+                    error_count = 0
 finally:
-    with open(output_file, mode='w', newline='', encoding='utf-8') as file:
-        writer = csv.DictWriter(file, fieldnames=["image", "description"])
-        writer.writeheader()
-        writer.writerows(results)
-
     driver.quit()
